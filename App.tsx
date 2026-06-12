@@ -7,6 +7,7 @@ import { CapturePreview } from './components/CapturePreview';
 import { generateHistoricalImage } from './services/geminiService';
 import { Splash } from './components/Splash';
 import { EraSelectionScreen } from './components/EraSelectionScreen';
+import { useFramedImage } from './useFramedImage';
 
 const SPLASH_VIDEOS = [
   './Videos/US_01.mp4',
@@ -14,60 +15,8 @@ const SPLASH_VIDEOS = [
   './Videos/US_03.mp4'
 ];
 
-const applyFrameToImage = async (base64Image: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const frameImg = new Image();
-    frameImg.crossOrigin = 'anonymous';
-    frameImg.onload = () => {
-      const mainImg = new Image();
-      mainImg.crossOrigin = 'anonymous';
-      mainImg.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Set canvas to frame size for exact 2:3 aspect ratio matching the frame
-        canvas.width = frameImg.width;
-        canvas.height = frameImg.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(base64Image);
-          return;
-        }
-
-        // Calculate size to cover the canvas (center crop)
-        const imgAspect = mainImg.width / mainImg.height;
-        const canvasAspect = canvas.width / canvas.height;
-        let drawWidth = canvas.width;
-        let drawHeight = canvas.height;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (imgAspect > canvasAspect) {
-          drawWidth = canvas.height * imgAspect;
-          offsetX = (canvas.width - drawWidth) / 2;
-        } else {
-          drawHeight = canvas.width / imgAspect;
-          offsetY = (canvas.height - drawHeight) / 2;
-        }
-
-        // Draw generated image
-        ctx.drawImage(mainImg, offsetX, offsetY, drawWidth, drawHeight);
-        
-        // Overlay frame
-        ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-
-        resolve(canvas.toDataURL('image/jpeg', 0.95));
-      };
-      mainImg.onerror = reject;
-      mainImg.src = base64Image;
-    };
-    frameImg.onerror = (e) => {
-      console.error('Frame image load error:', e);
-      reject(new Error('Failed to load frame image'));
-    };
-    frameImg.src = './Frame/Frame.png';
-  });
-};
-
 const App: React.FC = () => {
+  const { applyFrame } = useFramedImage();
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [selectedEra, setSelectedEra] = useState<EraData | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -76,6 +25,15 @@ const App: React.FC = () => {
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
   const [faceDetectionResult, setFaceDetectionResult] = useState<FaceDetectionResult | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
+  const [devSelectedCareer, setDevSelectedCareer] = useState<string>(() => {
+    return localStorage.getItem('devSelectedCareer') || 'random';
+  });
+
+  const handleSetDevSelectedCareer = useCallback((career: string) => {
+    console.log("[App] handleSetDevSelectedCareer called with:", career);
+    setDevSelectedCareer(career);
+    localStorage.setItem('devSelectedCareer', career);
+  }, []);
 
   const [bgVideoIndex, setBgVideoIndex] = useState(() => {
     const saved = localStorage.getItem('splashVideoIndex');
@@ -100,18 +58,35 @@ const App: React.FC = () => {
     setCurrentScreen(AppScreen.PROCESSING);
 
     try {
+      if (selectedEra.isAiGenerated === false) {
+        setGeneratedPrompt('Snap a Memory');
+        try {
+          const finalImage = await applyFrame(capturedImage, './Frame/Frame.png', true);
+          setRawGeneratedImage(finalImage);
+          setGeneratedImage(finalImage);
+        } catch (err) {
+          console.error("Failed to apply frame", err);
+          setRawGeneratedImage(capturedImage);
+          setGeneratedImage(capturedImage);
+        }
+        setCurrentScreen(AppScreen.RESULT);
+        return;
+      }
+
       // Execute the real AI image generation flow
+      console.log("[App] startAIProcessing - calling generateHistoricalImage with devSelectedCareer:", devSelectedCareer);
       const result = await generateHistoricalImage(
         capturedImage,
         selectedEra,
-        faceDetectionResult
+        faceDetectionResult,
+        devSelectedCareer
       );
 
       if (result && result.image) {
         setGeneratedPrompt(result.prompt);
         
         try {
-          const finalImage = await applyFrameToImage(result.image);
+          const finalImage = await applyFrame(result.image, './Frame/Frame.png', true);
           setRawGeneratedImage(finalImage);
           setGeneratedImage(finalImage);
         } catch (err) {
@@ -129,7 +104,7 @@ const App: React.FC = () => {
       setCurrentScreen(AppScreen.PREVIEW);
       alert('An error occurred while generating your historical portrait. Please try again.');
     }
-  }, [selectedEra, capturedImage, faceDetectionResult]);
+  }, [selectedEra, capturedImage, faceDetectionResult, applyFrame, devSelectedCareer]);
 
   const handleRestart = () => {
     setCapturedImage(null);
@@ -174,7 +149,15 @@ const App: React.FC = () => {
         );
 
       case AppScreen.CAMERA:
-        return <CameraCapture era={selectedEra} onCapture={handleCapture} onBack={() => setCurrentScreen(AppScreen.SPLASH)} />;
+        return (
+          <CameraCapture 
+            era={selectedEra} 
+            onCapture={handleCapture} 
+            onBack={() => setCurrentScreen(AppScreen.SPLASH)}
+            devSelectedCareer={devSelectedCareer}
+            setDevSelectedCareer={handleSetDevSelectedCareer}
+          />
+        );
 
       case AppScreen.PREVIEW:
         return capturedImage ? (

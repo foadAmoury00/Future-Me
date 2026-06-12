@@ -3,15 +3,18 @@ import { RefreshCw, AlertCircle, ChevronLeft } from 'lucide-react';
 import { PortalCountdown } from './PortalCountdown';
 import { loadFaceApiModels, detectFaces } from '../services/faceService';
 import { EraData, FaceDetectionResult, EraId } from '../types';
+import { CAREERS } from '../constants';
 
 interface CameraCaptureProps {
   era: EraData | null;
   onCapture: (image: string, faceData: FaceDetectionResult) => void;
   onBack: () => void;
   isProcessing?: boolean;
+  devSelectedCareer?: string;
+  setDevSelectedCareer?: (career: string) => void;
 }
 
-export const CameraCapture: React.FC<CameraCaptureProps> = ({ era, onCapture, onBack, isProcessing = false }) => {
+export const CameraCapture: React.FC<CameraCaptureProps> = ({ era, onCapture, onBack, isProcessing = false, devSelectedCareer = "random", setDevSelectedCareer }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -20,6 +23,57 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ era, onCapture, on
   const [isDetecting, setIsDetecting] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showFlash, setShowFlash] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imgData = event.target?.result as string;
+      if (!imgData) return;
+
+      const img = new Image();
+      img.onload = async () => {
+        if (!canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const canvasWidth = 1080;
+        const canvasHeight = 1920;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = 'black';
+          ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+          const scale = Math.max(canvasWidth / img.width, canvasHeight / img.height);
+          const drawWidth = img.width * scale;
+          const drawHeight = img.height * scale;
+          const drawX = (canvasWidth - drawWidth) / 2;
+          const drawY = (canvasHeight - drawHeight) / 2;
+          
+          ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+          const uprightImageData = canvas.toDataURL('image/jpeg', 0.9);
+          setIsDetecting(true);
+          try {
+            const faceData = await detectFaces(canvas, modelsLoaded);
+            onCapture(uprightImageData, faceData);
+          } catch (err) {
+            console.error("Face detection failed during upload", err);
+            onCapture(uprightImageData, { maleCount: 0, femaleCount: 0, childCount: 0, totalPeople: 0 });
+          } finally {
+            setIsDetecting(false);
+          }
+        }
+      };
+      img.src = imgData;
+    };
+    reader.readAsDataURL(file);
+  };
+
 
   useEffect(() => {
     const init = async () => {
@@ -209,8 +263,39 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ era, onCapture, on
             <ChevronLeft size={24} />
           </button>
 
-          {/* Empty spacer for flex alignment */}
-          <div className="w-12" />
+          {/* Development Controls */}
+          <div className="bg-black/40 backdrop-blur-md p-2 rounded border border-white/20 flex gap-4 items-center">
+            {era?.id === EraId.CAREERS && (
+              <div className="flex flex-col gap-1 items-end">
+                <label className="text-[9px] uppercase tracking-wider text-white/70 font-bold">Override Career</label>
+                <select 
+                  value={devSelectedCareer}
+                  onChange={(e) => setDevSelectedCareer?.(e.target.value)}
+                  className="bg-black/80 text-white p-1 rounded border border-white/30 text-xs outline-none focus:border-[#C17F4E]"
+                >
+                  <option value="random">Random</option>
+                  {CAREERS.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-1 items-end">
+              <label className="text-[9px] uppercase tracking-wider text-white/70 font-bold">Test Upload</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleUploadImage}
+                ref={fileInputRef}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-black/85 text-white px-3 py-1 rounded border border-white/30 text-xs font-bold hover:bg-white/15 active:scale-95 transition-all"
+              >
+                CHOOSE FILE
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

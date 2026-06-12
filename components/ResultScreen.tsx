@@ -70,10 +70,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
         const formData = new FormData();
         formData.append('image', blob, 'result.png');
-        formData.append('folder', 'US-Embassy-2026');
+        formData.append('folder', 'Future-Me');
         formData.append('metadata', JSON.stringify({
-          event: 'US-Embassy-Photobooth-2026',
-          photobooth_id: 'US-Embassy-Photobooth-2026',
+          event: 'FutureMe-Photobooth',
+          photobooth_id: 'FutureMe-Photobooth',
           era: era.name,
           prompt: prompt
         }));
@@ -412,18 +412,18 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       {/* Main Content Card: Clean cinematic portrait without white outline */}
       <div className="w-full max-h-[72vh] flex items-center justify-center animate-scale-in relative z-10 mb-8">
         <div className="h-full aspect-[2/3] max-w-full relative rounded-[38px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] overflow-hidden bg-black">
-            <img
-              src={imageSrc}
-              alt="Generated Portrait"
-              draggable="false"
-              className="w-full h-full object-cover transform transition-all duration-700"
-            />
+          <img
+            src={imageSrc}
+            alt="Generated Portrait"
+            draggable="false"
+            className="w-full h-full object-cover transform transition-all duration-700"
+          />
         </div>
       </div>
 
       {/* Bottom Stacked Grid: Stacked buttons left, QR code card right */}
       <div className="absolute bottom-6 z-10 w-full max-w-lg md:max-w-2xl px-8 flex items-center justify-center gap-10 md:gap-14 pb-4 animate-slide-in-bottom">
-        
+
         {/* Left column stacked buttons */}
         <div className="flex flex-col gap-8 w-[57%]">
           {/* PRINT PHOTO Button — Patriot Red */}
@@ -459,7 +459,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               <Loader2 className="animate-spin text-slate-300" size={32} />
             )}
           </div>
-          <span 
+          <span
             className="text-sm md:text-base text-[#E8D5B5] font-black tracking-widest uppercase text-center block mt-3 animate-pulse"
             style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
           >
