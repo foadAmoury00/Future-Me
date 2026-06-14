@@ -135,9 +135,6 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         const { ipcRenderer } = (window as any).require('electron');
         let printableImage = imageSrc;
 
-        const isCP910 = selectedPrinter.toLowerCase().includes('cp910');
-        console.log(`[Printer] Model detection: "${selectedPrinter}" → ${isCP910 ? 'CP910 (safe-zone margins)' : 'Other printer (no margins)'}`);
-
         const preparePrintImage = async (base64: string): Promise<string> => {
           return new Promise((resolve) => {
             const img = new Image();
@@ -152,28 +149,21 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               ctx.fillStyle = 'black';
               ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-              if (isCP910) {
-                // Canon SELPHY CP910: apply calibrated safe-zone margins to compensate
-                // for the printer's ~2% borderless bleed expansion on all sides.
-                // padTop=70, padBottom=40, padLeft/Right=24 (see PRINTING_SETUP.md)
-                const padTop = 70;
-                const padBottom = 40;
-                const padLeft = 24;
-                const padRight = 24;
+              // Apply calibrated safe-zone margins to compensate for the printer's
+              // ~2% borderless bleed expansion on all sides (prevents clipping the top of the frame).
+              // padTop=70, padBottom=40, padLeft/Right=24 (see PRINTING_SETUP.md)
+              const padTop = 70;
+              const padBottom = 40;
+              const padLeft = 24;
+              const padRight = 24;
 
-                ctx.drawImage(
-                  img,
-                  padLeft, padTop,
-                  canvas.width - (padLeft + padRight),
-                  canvas.height - (padTop + padBottom)
-                );
-                console.log('[Printer] Applied CP910 safe-zone margins');
-              } else {
-                // All other printers (e.g. CP1500 via PrintFab): render the image
-                // edge-to-edge at full 1200x1800. The driver/RIP handles its own bleed.
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                console.log('[Printer] No margins applied — full 1200x1800 image sent to driver');
-              }
+              ctx.drawImage(
+                img,
+                padLeft, padTop,
+                canvas.width - (padLeft + padRight),
+                canvas.height - (padTop + padBottom)
+              );
+              console.log('[Printer] Applied safe-zone margins to prevent borderless bleed crop');
 
               resolve(canvas.toDataURL('image/jpeg', 0.95));
             };
@@ -294,9 +284,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   };
 
   return (
-    <div className="h-full w-full relative overflow-hidden bg-transparent flex flex-col items-center justify-center py-6 px-4">
-      {/* 3D WebGL Fireworks Shooting Stars Background */}
-      <Fireworks3D intensity="medium" />
+    <div className="h-full w-full relative overflow-hidden bg-transparent flex flex-col items-center justify-between pt-8 pb-4 px-6">
+      {/* 3D WebGL Fireworks Shooting Stars Background - disabled for AI path */}
+      {!era.isAiGenerated && <Fireworks3D intensity="medium" />}
 
       {/* Floating settings button on the very top-right - styled in sepia glass */}
       <div className="absolute top-4 right-4 z-20">
@@ -410,8 +400,8 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       )}
 
       {/* Main Content Card: Clean cinematic portrait without white outline */}
-      <div className="w-full max-h-[72vh] flex items-center justify-center animate-scale-in relative z-10 mb-8">
-        <div className="h-full aspect-[2/3] max-w-full relative rounded-[38px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] overflow-hidden bg-black">
+      <div className="w-full flex-1 flex items-center justify-center animate-scale-in relative z-10 min-h-0 mb-4">
+        <div className="h-full max-h-[62vh] aspect-[2/3] max-w-full relative rounded-[38px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] overflow-hidden bg-black">
           <img
             src={imageSrc}
             alt="Generated Portrait"
@@ -422,51 +412,65 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       </div>
 
       {/* Bottom Stacked Grid: Stacked buttons left, QR code card right */}
-      <div className="absolute bottom-6 z-10 w-full max-w-lg md:max-w-2xl px-8 flex items-center justify-center gap-10 md:gap-14 pb-4 animate-slide-in-bottom">
+      <div className="relative z-10 w-[90%] max-w-[960px] flex flex-col items-center animate-slide-in-bottom mt-2">
+        {/* Row for Buttons and QR Code Square */}
+        <div className="w-full flex items-center justify-between gap-6">
+          {/* Left column stacked buttons */}
+          <div className="flex flex-col gap-3.5 w-[62%]">
+            {/* PRINT PHOTO Button */}
+            <div className="transform translate-y-8">
+              <button
+                onClick={handlePrint}
+                className="active:scale-95 transition-transform duration-200 focus:outline-none w-full"
+              >
+                <img
+                  src="./images/print photo.png"
+                  alt="Print Photo"
+                  className="w-full h-auto object-contain"
+                />
+              </button>
+            </div>
 
-        {/* Left column stacked buttons */}
-        <div className="flex flex-col gap-8 w-[57%]">
-          {/* PRINT PHOTO Button — Patriot Red */}
-          <button
-            onClick={handlePrint}
-            className="flex items-center justify-center gap-4 py-5 px-8 bg-[#B22234] hover:bg-[#D32F2F] text-[#FAF6EE] font-extrabold rounded-[28px] shadow-[0_8px_16px_rgba(178,34,52,0.15)] border-b-4 border-[#7F171F] active:border-b-0 active:translate-y-1 transition-all duration-100 uppercase tracking-widest text-base md:text-xl"
-          >
-            <Printer size={28} />
-            <span>Print Photo</span>
-          </button>
+            {/* NEW ADVENTURE Button */}
+            <div className="transform -translate-y-8">
+              <button
+                onClick={onRestart}
+                className="active:scale-95 transition-transform duration-200 focus:outline-none w-full"
+              >
+                <img
+                  src="./images/new adventure.png"
+                  alt="New Adventure"
+                  className="w-full h-auto object-contain"
+                />
+              </button>
+            </div>
+          </div>
 
-          {/* NEW ADVENTURE Button — Patriot Blue */}
-          <button
-            onClick={onRestart}
-            className="flex items-center justify-center gap-4 py-5 px-8 bg-[#3C3B6E] hover:bg-[#4E4D8A] text-[#FAF6EE] font-extrabold rounded-[28px] shadow-[0_8px_16px_rgba(60,59,110,0.15)] border-b-4 border-[#25244C] active:border-b-0 active:translate-y-1 transition-all duration-100 uppercase tracking-widest text-base md:text-xl"
-          >
-            <RotateCcw size={26} />
-            <span>New Adventure</span>
-          </button>
-        </div>
-
-        {/* Right column QR card container */}
-        <div className="flex flex-col items-center gap-2.5 w-[43%]">
-          <div className="w-32 h-32 md:w-36 md:h-36 bg-white rounded-[30px] md:rounded-[34px] shadow-lg p-3 relative flex items-center justify-center border border-slate-100">
+          {/* Right column QR card container */}
+          <div className="w-[35%] aspect-square bg-white rounded-[24px] shadow-lg p-2.5 relative flex items-center justify-center border border-slate-100">
             {isUploading ? (
-              <div className="flex flex-col items-center gap-1.5">
-                <Loader2 className="animate-spin text-[#B22234]" size={32} />
-                <span className="text-[9.5px] text-slate-500 font-extrabold uppercase tracking-widest">Uploading</span>
+              <div className="flex flex-col items-center justify-center">
+                <Loader2 className="animate-spin text-[#B22234]" size={28} />
               </div>
             ) : qrCodeUrl ? (
               <img src={qrCodeUrl} alt="QR Code" draggable="false" className="w-full h-full object-contain" />
             ) : (
-              <Loader2 className="animate-spin text-slate-300" size={32} />
+              <Loader2 className="animate-spin text-slate-300" size={28} />
             )}
           </div>
-          <span
-            className="text-sm md:text-base text-[#E8D5B5] font-black tracking-widest uppercase text-center block mt-3 animate-pulse"
-            style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}
-          >
-            Scan to<br />Get Your Photo
-          </span>
         </div>
 
+        {/* Scan to Get Photo label placed underneath, aligned with the QR code */}
+        <div className="w-full flex justify-end mt-2.5">
+          <div className="w-[35%] text-center">
+            <span
+              className="text-[18px] text-[#E8D5B5] font-black tracking-widest uppercase block animate-pulse"
+              style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)', lineHeight: '1.2' }}
+            >
+              Scan to<br />Get Photo
+            </span>
+          </div>
+        </div>
       </div>
 
       <style>{`

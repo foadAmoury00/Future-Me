@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { EraData, FaceDetectionResult, EraId } from '../types';
+import { CAREERS } from '../constants';
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;

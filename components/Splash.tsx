@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 const SPLASH_VIDEOS = [
-  './Videos/US_01.mp4',
-  './Videos/US_02.mp4',
-  './Videos/US_03.mp4'
+  './Videos/Graduation.mp4'
 ];
 
 export const Splash: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) => {
@@ -30,7 +28,10 @@ export const Splash: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#FAF6EE] overflow-hidden cursor-none">
+    <div 
+      className="fixed inset-0 z-[9999] bg-[#FAF6EE] overflow-hidden cursor-none"
+      onClick={handleTransition}
+    >
       {/* Background Video Layer */}
       <video
         ref={videoRef}
