@@ -113,11 +113,17 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             const track = mediaStream.getVideoTracks()[0];
             if (track) {
               const capabilities = track.getCapabilities() as any;
+              const settings = track.getSettings() as any;
               if (capabilities.focusMode && capabilities.focusMode.includes('manual')) {
-                await track.applyConstraints({
+                const constraints: any = {
                   advanced: [{ focusMode: 'manual' }]
-                } as any);
-                console.log("[CameraCapture] Camera focusMode set to manual successfully.");
+                };
+                // Lock current focus distance if available to prevent autofocus on brightness changes
+                if (settings.focusDistance !== undefined) {
+                  constraints.advanced[0].focusDistance = 500; // Fixed to ~10-20cm range
+                }
+                await track.applyConstraints(constraints as any);
+                console.log("[CameraCapture] Camera focusMode set to manual and focusDistance locked successfully.");
               }
             }
           } catch (focusErr) {
@@ -257,9 +263,9 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         {/* Foreground Frame Overlay during capturing for Snap a Memory (non-AI) */}
         {!era?.isAiGenerated && (
           <img
-            src="./images/Frame.png"
+            src="./images/frame 15 june 2026.png"
             alt="Frame Overlay"
-            className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
           />
         )}
       </div>

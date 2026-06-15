@@ -56,7 +56,7 @@ export const CapturePreview: React.FC<CapturePreviewProps> = ({
           />
           {!era?.isAiGenerated && (
             <img
-              src="/images/Frame.png"
+              src="./images/frame 15 june 2026.png"
               alt="Frame Overlay"
               className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
             />

@@ -45,11 +45,17 @@ const App: React.FC = () => {
           const track = stream.getVideoTracks()[0];
           if (track) {
             const capabilities = track.getCapabilities() as any;
+            const settings = track.getSettings() as any;
             if (capabilities.focusMode && capabilities.focusMode.includes('manual')) {
-              await track.applyConstraints({
+              const constraints: any = {
                 advanced: [{ focusMode: 'manual' }]
-              } as any);
-              console.log("[App] Camera focusMode set to manual successfully.");
+              };
+              // Lock current focus distance if available to prevent autofocus on brightness changes
+              if (settings.focusDistance !== undefined) {
+                constraints.advanced[0].focusDistance = settings.focusDistance;
+              }
+              await track.applyConstraints(constraints as any);
+              console.log("[App] Camera focusMode set to manual and focusDistance locked successfully.");
             }
           }
         } catch (focusErr) {
@@ -124,7 +130,7 @@ const App: React.FC = () => {
       if (selectedEra.isAiGenerated === false) {
         setGeneratedPrompt('Snap a Memory');
         try {
-          const finalImage = await applyFrame(capturedImage, './images/Frame.png', true);
+          const finalImage = await applyFrame(capturedImage, './images/frame 15 june 2026.png', true);
           setRawGeneratedImage(finalImage);
           setGeneratedImage(finalImage);
         } catch (err) {
@@ -172,7 +178,15 @@ const App: React.FC = () => {
       if (result && result.image) {
         setGeneratedPrompt(result.prompt);
         setRawGeneratedImage(result.image);
-        setGeneratedImage(result.image);
+        
+        try {
+          const framedImage = await applyFrame(result.image, './images/final frame for ai photo.png', true);
+          setGeneratedImage(framedImage);
+        } catch (err) {
+          console.error("[App] Failed to apply AI final frame", err);
+          setGeneratedImage(result.image);
+        }
+        
         setCurrentScreen(AppScreen.RESULT);
       }
     } catch (e) {
