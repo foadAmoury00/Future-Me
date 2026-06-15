@@ -1,9 +1,9 @@
 {
-  "name": "us-embassy-photobooth-2026",
+  "name": "futureme",
   "private": true,
   "version": "0.0.1",
   "author": "5DVR",
-  "description": "US-Embassy-Photobooth-2026 Application",
+  "description": "FutureMe Application",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -39,8 +39,8 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.5dvr.usembassyphotobooth",
-    "productName": "US-Embassy-Photobooth-2026",
+    "appId": "com.5dvr.futureme",
+    "productName": "FutureMe",
     "directories": {
       "output": "release"
     },

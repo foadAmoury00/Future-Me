@@ -120,7 +120,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = imageSrc;
-    link.download = `us-embassy-photobooth-2026-${era.id}-${Date.now()}.png`;
+    link.download = `futureme-${era.id}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -146,16 +146,15 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               const ctx = canvas.getContext('2d');
               if (!ctx) { resolve(base64); return; }
 
-              ctx.fillStyle = 'black';
+              ctx.fillStyle = 'white';
               ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-              // Apply calibrated safe-zone margins to compensate for the printer's
-              // ~2% borderless bleed expansion on all sides (prevents clipping the top of the frame).
-              // padTop=70, padBottom=40, padLeft/Right=24 (see PRINTING_SETUP.md)
-              const padTop = 70;
-              const padBottom = 40;
-              const padLeft = 24;
-              const padRight = 24;
+              // Set padding to 0 on left/right for borderless printing,
+              // but keep top/bottom safe-zones to prevent cropping by tear-off tabs.
+              const padTop = 50;
+              const padBottom = 20;
+              const padLeft = 0;
+              const padRight = 0;
 
               ctx.drawImage(
                 img,
@@ -163,7 +162,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 canvas.width - (padLeft + padRight),
                 canvas.height - (padTop + padBottom)
               );
-              console.log('[Printer] Applied safe-zone margins to prevent borderless bleed crop');
+              console.log('[Printer] Set left/right borders to zero and top/bottom to safe-zone with white background');
 
               resolve(canvas.toDataURL('image/jpeg', 0.95));
             };

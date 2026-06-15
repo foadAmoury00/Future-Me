@@ -42,12 +42,14 @@ export const Fireworks3D: React.FC<Fireworks3DProps> = ({ intensity = 'medium' }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Clean, high-contrast US Flag palette for solid confetti
+    // Confetti palette matching the button gradient (Teal, Cyan, Blue, Purple, Magenta)
     const colorOptions = [
-      '#B22234', // Patriot Red
-      '#FFFFFF', // Pure White
-      '#3C3B6E', // Patriot Blue
-      '#D32F2F', // Bright Red
+      '#00F5D4', // Teal/Cyan
+      '#00D2E5', // Bright Turquoise
+      '#00A8FF', // Sky Blue
+      '#3F51B5', // Royal Blue
+      '#9C27B0', // Purple/Violet
+      '#E040FB', // Magenta/Pink
     ];
 
     const particles: Particle[] = [];

@@ -39,6 +39,23 @@ const App: React.FC = () => {
             height: { ideal: 720 }
           }
         });
+
+        // Attempt to disable autofocus by setting focusMode to manual if supported
+        try {
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            const capabilities = track.getCapabilities() as any;
+            if (capabilities.focusMode && capabilities.focusMode.includes('manual')) {
+              await track.applyConstraints({
+                advanced: [{ focusMode: 'manual' }]
+              } as any);
+              console.log("[App] Camera focusMode set to manual successfully.");
+            }
+          }
+        } catch (focusErr) {
+          console.warn("[App] Failed to apply manual focusMode constraint:", focusErr);
+        }
+
         setGlobalStream(stream);
         activeStream = stream;
       } catch (err) {
