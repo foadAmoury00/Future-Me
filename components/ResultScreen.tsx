@@ -137,37 +137,87 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
         const preparePrintImage = async (base64: string): Promise<string> => {
           return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              // Enforce exactly 1200 x 1800 resolution for printing
-              canvas.width = 1200;
-              canvas.height = 1800;
-              const ctx = canvas.getContext('2d');
-              if (!ctx) { resolve(base64); return; }
+            const photoImg = new Image();
+            photoImg.crossOrigin = "Anonymous";
+            
+            photoImg.onload = () => {
+              const frameImg = new Image();
+              frameImg.crossOrigin = "Anonymous";
+              
+              frameImg.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1200;
+                canvas.height = 1800;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { resolve(base64); return; }
 
-              ctx.fillStyle = 'white';
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Fill background with white
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-              // Set padding to 0 on left/right for borderless printing,
-              // but keep top/bottom safe-zones to prevent cropping by tear-off tabs.
-              const padTop = 50;
-              const padBottom = 20;
-              const padLeft = 0;
-              const padRight = 0;
+                // Helper to draw image center-cropped (cover fit)
+                const drawImageCover = (c: CanvasRenderingContext2D, image: HTMLImageElement, tx: number, ty: number, tw: number, th: number) => {
+                  const imgRatio = image.width / image.height;
+                  const targetRatio = tw / th;
+                  let sx = 0, sy = 0, sw = image.width, sh = image.height;
+                  if (imgRatio > targetRatio) {
+                    sw = image.height * targetRatio;
+                    sx = (image.width - sw) / 2;
+                  } else {
+                    sh = image.width / targetRatio;
+                    sy = (image.height - sh) / 2;
+                  }
+                  c.drawImage(image, sx, sy, sw, sh, tx, ty, tw, th);
+                };
 
-              ctx.drawImage(
-                img,
-                padLeft, padTop,
-                canvas.width - (padLeft + padRight),
-                canvas.height - (padTop + padBottom)
-              );
-              console.log('[Printer] Set left/right borders to zero and top/bottom to safe-zone with white background');
+                const padTop = 50;
+                const padBottom = 20;
+                const scaleY = (canvas.height - padTop - padBottom) / canvas.height;
 
-              resolve(canvas.toDataURL('image/jpeg', 0.95));
+                if (era.isAiGenerated) {
+                  // AI Mode: Draw photo inside scaled transparent window of AI frame.png, then overlay scaled frame.
+                  // Bounding box with 5px bleed: tx = 60, ty = 57, tw = 1080, th = 1613.
+                  const tx = 60;
+                  const ty = 57 * scaleY + padTop;
+                  const tw = 1080;
+                  const th = 1613 * scaleY;
+
+                  drawImageCover(ctx, photoImg, tx, ty, tw, th);
+
+                  ctx.drawImage(
+                    frameImg,
+                    0, padTop,
+                    canvas.width,
+                    canvas.height - (padTop + padBottom)
+                  );
+                } else {
+                  // Snap a Memory: Draw photo inside scaled transparent window, then overlay scaled frame.
+                  // Bounding box with 5px bleed: tx = 125, ty = 329, tw = 950, th = 1180.
+                  const tx = 125;
+                  const ty = 329 * scaleY + padTop;
+                  const tw = 950;
+                  const th = 1180 * scaleY;
+
+                  drawImageCover(ctx, photoImg, tx, ty, tw, th);
+
+                  ctx.drawImage(
+                    frameImg,
+                    0, padTop,
+                    canvas.width,
+                    canvas.height - (padTop + padBottom)
+                  );
+                }
+
+                console.log('[Printer] Composed custom print layout successfully');
+                resolve(canvas.toDataURL('image/jpeg', 0.95));
+              };
+              
+              frameImg.onerror = () => resolve(base64);
+              frameImg.src = era.isAiGenerated ? './Frame/AI frame.png' : './Frame/frame in result.png';
             };
-            img.onerror = () => resolve(base64);
-            img.src = base64;
+            
+            photoImg.onerror = () => resolve(base64);
+            photoImg.src = rawImage || base64;
           });
         };
 
@@ -398,9 +448,8 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </div>
       )}
 
-      {/* Main Content Card: Clean cinematic portrait without white outline */}
       <div className="w-full flex-1 flex items-center justify-center animate-scale-in relative z-10 min-h-0 mb-4">
-        <div className="h-full max-h-[62vh] aspect-[2/3] max-w-full relative rounded-[38px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] overflow-hidden bg-black">
+        <div className="aspect-[2/3] max-w-full max-h-full w-auto h-auto relative rounded-[38px] overflow-hidden bg-black shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
           <img
             src={imageSrc}
             alt="Generated Portrait"

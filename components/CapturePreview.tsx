@@ -47,20 +47,19 @@ export const CapturePreview: React.FC<CapturePreviewProps> = ({
       <div className="absolute inset-0 z-0 bg-black/15 backdrop-blur-[2px] pointer-events-none" />
 
       {/* Main Preview Container - Clean rounded corners and shadow directly on the framed image */}
-      <div className="w-full max-h-[68vh] flex items-center justify-center animate-scale-in relative z-10">
-        <div className="h-full aspect-[2/3] max-w-full relative rounded-[38px] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
+      <div className="w-full flex-1 max-h-[68vh] flex items-center justify-center animate-scale-in relative z-10 min-h-0">
+        <div className="aspect-[2/3] max-w-full max-h-full w-auto h-auto relative rounded-[38px] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
           <img 
             src={imageSrc} 
             alt="Captured Preview" 
             className="w-full h-full object-cover" 
           />
-          {!era?.isAiGenerated && (
-            <img
-              src="./images/frame 15 june 2026.png"
-              alt="Frame Overlay"
-              className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
-            />
-          )}
+          {/* Overlay frame in preview */}
+          <img
+            src={era?.isAiGenerated ? "./Frame/AI frame.png" : "./Frame/frame in result.png"}
+            alt="Frame Overlay"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          />
         </div>
       </div>
 

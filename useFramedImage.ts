@@ -40,31 +40,51 @@ export const useFramedImage = () => {
             return;
           }
 
+          // Make canvas the exact size of the frame (1200x1800)
+          canvas.width = frameImg.width;
+          canvas.height = frameImg.height;
+
+          // Fill canvas background with white
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Helper to draw image center-cropped (cover fit)
+          const drawImageCover = (c: CanvasRenderingContext2D, image: HTMLImageElement, tx: number, ty: number, tw: number, th: number) => {
+            const imgRatio = image.width / image.height;
+            const targetRatio = tw / th;
+            let sx = 0, sy = 0, sw = image.width, sh = image.height;
+            if (imgRatio > targetRatio) {
+              sw = image.height * targetRatio;
+              sx = (image.width - sw) / 2;
+            } else {
+              sh = image.width / targetRatio;
+              sy = (image.height - sh) / 2;
+            }
+            c.drawImage(image, sx, sy, sw, sh, tx, ty, tw, th);
+          };
+
           if (isOverlay) {
-            // Mode A: Frame goes OVER the photo (Transparent center PNG)
-            // Make canvas the exact size of the frame
-            canvas.width = frameImg.width;
-            canvas.height = frameImg.height;
+            // Mode A (Snap a Memory): Draw photo inside the transparent window coordinates of frame in result.png
+            // Bounding box of transparent area in frame in result.png is minX=130, minY=334, maxX=1069, maxY=1503.
+            // We apply 5px bleed to ensure it sits cleanly under the frame borders.
+            const tx = 125;
+            const ty = 329;
+            const tw = 950;
+            const th = 1180;
 
-            // Draw the user's photo first (stretched to fit, or you can adjust math to center it)
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            // Draw the transparent frame on top
+            drawImageCover(ctx, img, tx, ty, tw, th);
             ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-            
           } else {
-            // Mode B: Photo goes OVER the frame (Border padding style)
-            // Calculate padding to leave room for the frame (e.g., 5%)
-            const framePadding = Math.max(img.width, img.height) * 0.05; 
+            // Mode B (AI Mode): Draw photo inside the transparent window coordinates of AI frame.png
+            // Bounding box of transparent area in AI frame.png is minX=65, minY=62, maxX=1131, maxY=1665.
+            // We apply 5px bleed to ensure it sits cleanly under the frame borders.
+            const tx = 60;
+            const ty = 57;
+            const tw = 1080;
+            const th = 1613;
 
-            canvas.width = img.width + (framePadding * 2);
-            canvas.height = img.height + (framePadding * 2);
-
-            // Draw the background frame filling the entire canvas
+            drawImageCover(ctx, img, tx, ty, tw, th);
             ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-
-            // Draw the user's photo centered on top of the frame
-            ctx.drawImage(img, framePadding, framePadding, img.width, img.height);
           }
 
           // 4. Resolve with the final composed image data URL

@@ -130,8 +130,8 @@ const App: React.FC = () => {
       if (selectedEra.isAiGenerated === false) {
         setGeneratedPrompt('Snap a Memory');
         try {
-          const finalImage = await applyFrame(capturedImage, './images/frame 15 june 2026.png', true);
-          setRawGeneratedImage(finalImage);
+          const finalImage = await applyFrame(capturedImage, './Frame/frame in result.png', true);
+          setRawGeneratedImage(capturedImage);
           setGeneratedImage(finalImage);
         } catch (err) {
           console.error("Failed to apply frame", err);
@@ -180,7 +180,7 @@ const App: React.FC = () => {
         setRawGeneratedImage(result.image);
         
         try {
-          const framedImage = await applyFrame(result.image, './images/final frame for ai photo.png', true);
+          const framedImage = await applyFrame(result.image, './Frame/AI frame.png', false);
           setGeneratedImage(framedImage);
         } catch (err) {
           console.error("[App] Failed to apply AI final frame", err);

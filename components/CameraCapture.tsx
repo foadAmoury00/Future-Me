@@ -263,7 +263,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         {/* Foreground Frame Overlay during capturing for Snap a Memory (non-AI) */}
         {!era?.isAiGenerated && (
           <img
-            src="./images/frame 15 june 2026.png"
+            src="./Frame/frame in UI.png"
             alt="Frame Overlay"
             className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
           />
