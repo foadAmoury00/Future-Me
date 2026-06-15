@@ -1,5 +1,4 @@
-import React from 'react';
-import { RotateCcw, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EraData } from '../types';
 
 interface CapturePreviewProps {
@@ -15,51 +14,104 @@ export const CapturePreview: React.FC<CapturePreviewProps> = ({
   onProceed, 
   era 
 }) => {
+  const [countdown, setCountdown] = useState(5);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  console.log("[CapturePreview] Render - era:", era, "shouldShowFrame:", !era?.isAiGenerated);
+
+  useEffect(() => {
+    const startTimer = () => {
+      timerRef.current = setTimeout(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            onProceed();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    startTimer();
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [onProceed, countdown]);
 
   return (
     <div className="h-full w-full relative overflow-hidden bg-transparent flex flex-col items-center justify-center p-6">
-      {/* Background - Vintage overlays over shifting gradient */}
-      <div className="absolute inset-0 z-0 bg-transparent flex items-center justify-center pointer-events-none">
-         <div className="absolute inset-0 bg-gradient-to-tr from-[#050E1A]/40 via-transparent to-[#08162B]/35 z-5" />
-         <div className="absolute inset-0 bg-black/15 backdrop-blur-sm z-10" />
+      {/* Background - transparent overlay over the blurred global webcam */}
+      <div className="absolute inset-0 z-0 bg-black/15 backdrop-blur-[2px] pointer-events-none" />
+
+      {/* Main Preview Container - Clean rounded corners and shadow directly on the framed image */}
+      <div className="w-full max-h-[68vh] flex items-center justify-center animate-scale-in relative z-10">
+        <div className="h-full aspect-[2/3] max-w-full relative rounded-[38px] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
+          <img 
+            src={imageSrc} 
+            alt="Captured Preview" 
+            className="w-full h-full object-cover" 
+          />
+          {!era?.isAiGenerated && (
+            <img
+              src="/images/Frame.png"
+              alt="Frame Overlay"
+              className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
+            />
+          )}
+        </div>
       </div>
 
-      {/* Main Preview Container - Antique double frame border */}
-      <div className="w-full max-h-[72vh] flex items-center justify-center animate-scale-in relative z-10">
-        <div className="h-full aspect-[2/3] max-w-full relative bg-[#FAF7F2] p-3 rounded-[48px] shadow-[0_20px_50px_rgba(0,0,0,0.25)] border-2 border-[#D2C5AD]">
-          <div className="w-full h-full rounded-[38px] overflow-hidden border border-[#D2C5AD]/60">
+      {/* Actions Container - Horizontal alignment */}
+      <div className="relative z-20 flex flex-row items-center justify-center gap-10 mt-8 w-full animate-slide-in-bottom">
+        
+        {/* Retake Button on the left */}
+        <button
+          onClick={() => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            onRetake();
+          }}
+          className="active:scale-95 transition-transform duration-200 focus:outline-none"
+        >
+          <img 
+            src="./images/retake photo.png" 
+            alt="Retake Photo" 
+            className="h-[130px] md:h-[160px] object-contain"
+          />
+        </button>
+
+        {/* Concentric countdown rings on the right */}
+        {countdown > 0 && (
+          <div className="relative rounded-full bg-white flex items-center justify-center shadow-lg" style={{ width: 140, height: 140 }}>
+            {/* Outer Ring - Anticlockwise */}
             <img 
-              src={imageSrc} 
-              alt="Captured Preview" 
-              className="w-full h-full object-cover" 
+              src="./images/proceed countdown outer.png" 
+              alt="Outer Ring" 
+              className="absolute top-[6%] left-[6%] w-[88%] h-[88%] object-contain animate-spin-anticlockwise"
+            />
+            {/* Inner Ring - Clockwise */}
+            <img 
+              src="./images/proceed countdown inner.png" 
+              alt="Inner Ring" 
+              className="absolute top-[16%] left-[16%] w-[68%] h-[68%] object-contain animate-spin-clockwise"
+            />
+            {/* Number Image */}
+            <img 
+              key={countdown}
+              src={
+                countdown === 5 ? './images/1 (4) small.png' :
+                countdown === 4 ? './images/1 (3) small.png' :
+                countdown === 3 ? './images/1 (2) small.png' :
+                countdown === 2 ? './images/1 (1) small.png' :
+                './images/1 small.png'
+              } 
+              alt={String(countdown)} 
+              className="absolute top-[34%] left-[34%] w-[32%] h-[32%] object-contain animate-ping-once"
             />
           </div>
-        </div>
-      </div>
-
-      {/* Actions Container - Bottom Center */}
-      <div className="relative z-20 flex flex-col items-center gap-6 mt-12 w-full animate-slide-in-bottom">
-        
-        {/* Action Buttons */}
-        <div className="flex gap-6">
-          {/* Retake Button - Patriot Blue Line Style */}
-          <button
-            onClick={onRetake}
-            className="group flex items-center justify-center gap-3 px-8 py-5 bg-[#FAF7F2] hover:bg-[#3C3B6E] text-[#3C3B6E] hover:text-[#FAF6EE] font-bold rounded-[24px] shadow-lg border-2 border-[#3C3B6E] active:scale-95 transition-all duration-300 min-w-[200px]"
-          >
-            <RotateCcw className="w-6 h-6 group-hover:rotate-[-45deg] transition-transform" />
-            <span className="text-lg uppercase tracking-widest brand-font">Retake</span>
-          </button>
-          
-          {/* Proceed Button - Patriot Red Style */}
-          <button
-            onClick={onProceed}
-            className="group flex items-center justify-center gap-3 px-8 py-5 bg-[#B22234] hover:bg-[#D32F2F] text-[#FAF6EE] font-bold rounded-[24px] shadow-[0_12px_30px_rgba(178,34,52,0.25)] border-b-4 border-[#7F171F] active:border-b-0 active:translate-y-1 transition-all duration-300 min-w-[200px]"
-          >
-            <span className="text-lg uppercase tracking-widest brand-font">Proceed</span>
-            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
+        )}
       </div>
 
       <style>{`
@@ -79,8 +131,30 @@ export const CapturePreview: React.FC<CapturePreviewProps> = ({
           animation: scale-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-slide-in-bottom {
-          animation: slide-in-bottom 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards opacity(0);
-          opacity: 0;
+          animation: slide-in-bottom 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+        }
+        @keyframes spin-clockwise {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes spin-anticlockwise {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
+        }
+        .animate-spin-clockwise {
+          animation: spin-clockwise 3.5s linear infinite;
+        }
+        .animate-spin-anticlockwise {
+          animation: spin-anticlockwise 3.5s linear infinite;
+        }
+        @keyframes ping-once {
+          0% { transform: scale(1.35); opacity: 0; }
+          20% { transform: scale(1); opacity: 1; }
+          80% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(1.15); opacity: 0; }
+        }
+        .animate-ping-once {
+          animation: ping-once 1s ease-out forwards;
         }
       `}</style>
     </div>

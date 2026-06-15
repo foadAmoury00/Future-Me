@@ -8,8 +8,8 @@ export enum AppScreen {
 }
 
 export enum EraId {
-  DELAWARE = 'delaware',
-  DECLARATION = 'declaration'
+  CAREERS = 'careers',
+  SNAP_A_MEMORY = 'snap_a_memory'
 }
 
 export interface EraData {
@@ -17,6 +17,7 @@ export interface EraData {
   name: string;
   description: string;
   promptInstructions: string;
+  isAiGenerated?: boolean;
 }
 
 export interface FaceDetectionResult {

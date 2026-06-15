@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AppScreen, EraData, FaceDetectionResult } from './types';
 import { CameraCapture } from './components/CameraCapture';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -7,67 +7,14 @@ import { CapturePreview } from './components/CapturePreview';
 import { generateHistoricalImage } from './services/geminiService';
 import { Splash } from './components/Splash';
 import { EraSelectionScreen } from './components/EraSelectionScreen';
+import { useFramedImage } from './useFramedImage';
 
 const SPLASH_VIDEOS = [
-  './Videos/US_01.mp4',
-  './Videos/US_02.mp4',
-  './Videos/US_03.mp4'
+  './Videos/Graduation.mp4'
 ];
 
-const applyFrameToImage = async (base64Image: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const frameImg = new Image();
-    frameImg.crossOrigin = 'anonymous';
-    frameImg.onload = () => {
-      const mainImg = new Image();
-      mainImg.crossOrigin = 'anonymous';
-      mainImg.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Set canvas to frame size for exact 2:3 aspect ratio matching the frame
-        canvas.width = frameImg.width;
-        canvas.height = frameImg.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(base64Image);
-          return;
-        }
-
-        // Calculate size to cover the canvas (center crop)
-        const imgAspect = mainImg.width / mainImg.height;
-        const canvasAspect = canvas.width / canvas.height;
-        let drawWidth = canvas.width;
-        let drawHeight = canvas.height;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (imgAspect > canvasAspect) {
-          drawWidth = canvas.height * imgAspect;
-          offsetX = (canvas.width - drawWidth) / 2;
-        } else {
-          drawHeight = canvas.width / imgAspect;
-          offsetY = (canvas.height - drawHeight) / 2;
-        }
-
-        // Draw generated image
-        ctx.drawImage(mainImg, offsetX, offsetY, drawWidth, drawHeight);
-        
-        // Overlay frame
-        ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-
-        resolve(canvas.toDataURL('image/jpeg', 0.95));
-      };
-      mainImg.onerror = reject;
-      mainImg.src = base64Image;
-    };
-    frameImg.onerror = (e) => {
-      console.error('Frame image load error:', e);
-      reject(new Error('Failed to load frame image'));
-    };
-    frameImg.src = './Frame/Frame.png';
-  });
-};
-
 const App: React.FC = () => {
+  const { applyFrame } = useFramedImage();
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [selectedEra, setSelectedEra] = useState<EraData | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -76,6 +23,69 @@ const App: React.FC = () => {
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
   const [faceDetectionResult, setFaceDetectionResult] = useState<FaceDetectionResult | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
+  const [devSelectedCareer, setDevSelectedCareer] = useState<string>('random');
+
+  const [globalStream, setGlobalStream] = useState<MediaStream | null>(null);
+
+  // Pre-warm the camera stream globally
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    const initCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+
+        // Attempt to disable autofocus by setting focusMode to manual if supported
+        try {
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            const capabilities = track.getCapabilities() as any;
+            if (capabilities.focusMode && capabilities.focusMode.includes('manual')) {
+              await track.applyConstraints({
+                advanced: [{ focusMode: 'manual' }]
+              } as any);
+              console.log("[App] Camera focusMode set to manual successfully.");
+            }
+          }
+        } catch (focusErr) {
+          console.warn("[App] Failed to apply manual focusMode constraint:", focusErr);
+        }
+
+        setGlobalStream(stream);
+        activeStream = stream;
+      } catch (err) {
+        console.error('[App] Global camera access failed or denied:', err);
+      }
+    };
+    initCamera();
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Callback ref to play background video instantly upon mounting
+  const bgVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    if (node && globalStream) {
+      node.srcObject = globalStream;
+      node.play().catch(err => {
+        console.warn("[App] Error playing background video:", err);
+      });
+    }
+  }, [globalStream]);
+
+  const handleSetDevSelectedCareer = useCallback((career: string) => {
+    console.log("[App] handleSetDevSelectedCareer called with:", career);
+    setDevSelectedCareer(career);
+    localStorage.setItem('devSelectedCareer', career);
+  }, []);
 
   const [bgVideoIndex, setBgVideoIndex] = useState(() => {
     const saved = localStorage.getItem('splashVideoIndex');
@@ -94,44 +104,7 @@ const App: React.FC = () => {
     setCurrentScreen(AppScreen.PREVIEW);
   };
 
-  const startAIProcessing = useCallback(async () => {
-    if (!selectedEra || !capturedImage || !faceDetectionResult) return;
-
-    setCurrentScreen(AppScreen.PROCESSING);
-
-    try {
-      // Execute the real AI image generation flow
-      const result = await generateHistoricalImage(
-        capturedImage,
-        selectedEra,
-        faceDetectionResult
-      );
-
-      if (result && result.image) {
-        setGeneratedPrompt(result.prompt);
-        
-        try {
-          const finalImage = await applyFrameToImage(result.image);
-          setRawGeneratedImage(finalImage);
-          setGeneratedImage(finalImage);
-        } catch (err) {
-          console.error("Failed to apply frame", err);
-          setRawGeneratedImage(result.image);
-          setGeneratedImage(result.image);
-        }
-
-        setCurrentScreen(AppScreen.RESULT);
-      } else {
-        throw new Error("No image data received from the API.");
-      }
-    } catch (e) {
-      console.error("AI Processing Error:", e);
-      setCurrentScreen(AppScreen.PREVIEW);
-      alert('An error occurred while generating your historical portrait. Please try again.');
-    }
-  }, [selectedEra, capturedImage, faceDetectionResult]);
-
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     setCapturedImage(null);
     setGeneratedImage(null);
     setGeneratedPrompt('');
@@ -140,7 +113,76 @@ const App: React.FC = () => {
 
     setSessionKey(prev => prev + 1);
     setCurrentScreen(AppScreen.SPLASH);
-  };
+  }, []);
+
+  const startAIProcessing = useCallback(async () => {
+    if (!selectedEra || !capturedImage || !faceDetectionResult) return;
+
+    setCurrentScreen(AppScreen.PROCESSING);
+
+    try {
+      if (selectedEra.isAiGenerated === false) {
+        setGeneratedPrompt('Snap a Memory');
+        try {
+          const finalImage = await applyFrame(capturedImage, './images/Frame.png', true);
+          setRawGeneratedImage(finalImage);
+          setGeneratedImage(finalImage);
+        } catch (err) {
+          console.error("Failed to apply frame", err);
+          setRawGeneratedImage(capturedImage);
+          setGeneratedImage(capturedImage);
+        }
+        setCurrentScreen(AppScreen.RESULT);
+        return;
+      }
+
+      // Execute the real AI image generation flow with retry logic
+      console.log("[App] startAIProcessing - calling generateHistoricalImage with devSelectedCareer:", devSelectedCareer);
+      let attempts = 0;
+      const maxAttempts = 3;
+      let result = null;
+
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          console.log(`[App] startAIProcessing - Attempt ${attempts} of ${maxAttempts}...`);
+          result = await generateHistoricalImage(
+            capturedImage,
+            selectedEra,
+            faceDetectionResult,
+            devSelectedCareer
+          );
+          if (result && result.image) {
+            break;
+          } else {
+            throw new Error("No image data received from the API.");
+          }
+        } catch (err) {
+          console.error(`[App] startAIProcessing - Attempt ${attempts} failed:`, err);
+          if (attempts >= maxAttempts) {
+            console.error("[App] startAIProcessing - Max retries exceeded. Returning to Splash screen.");
+            handleRestart();
+            return;
+          }
+          // Wait 1 second before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      if (result && result.image) {
+        setGeneratedPrompt(result.prompt);
+        setRawGeneratedImage(result.image);
+        setGeneratedImage(result.image);
+        setCurrentScreen(AppScreen.RESULT);
+      }
+    } catch (e) {
+      console.error("AI Processing Error:", e);
+      // Fallback in case of unexpected errors outside the main generation call
+      handleRestart();
+    }
+  }, [selectedEra, capturedImage, faceDetectionResult, applyFrame, devSelectedCareer, handleRestart]);
+
+
 
   const handleUpdateImage = (newImage: string) => {
     setGeneratedImage(newImage);
@@ -165,7 +207,7 @@ const App: React.FC = () => {
 
       case AppScreen.ERA_SELECTION:
         return (
-          <EraSelectionScreen 
+          <EraSelectionScreen
             onSelectEra={(era) => {
               setSelectedEra(era);
               setCurrentScreen(AppScreen.CAMERA);
@@ -174,7 +216,16 @@ const App: React.FC = () => {
         );
 
       case AppScreen.CAMERA:
-        return <CameraCapture era={selectedEra} onCapture={handleCapture} onBack={() => setCurrentScreen(AppScreen.SPLASH)} />;
+        return (
+          <CameraCapture
+            era={selectedEra}
+            onCapture={handleCapture}
+            onBack={() => setCurrentScreen(AppScreen.SPLASH)}
+            devSelectedCareer={devSelectedCareer}
+            setDevSelectedCareer={handleSetDevSelectedCareer}
+            globalStream={globalStream}
+          />
+        );
 
       case AppScreen.PREVIEW:
         return capturedImage ? (
@@ -187,7 +238,7 @@ const App: React.FC = () => {
         ) : null;
 
       case AppScreen.PROCESSING:
-        return <LoadingScreen />;
+        return <LoadingScreen isAi={selectedEra?.isAiGenerated} />;
 
       case AppScreen.RESULT:
         return (
@@ -220,27 +271,48 @@ const App: React.FC = () => {
       className="h-[100dvh] w-screen bg-transparent text-[#E8D5B5] flex flex-col overflow-hidden"
       onClick={handleGlobalClick}
     >
-      {/* Layer 1: Dynamic Background Video */}
+      {/* Layer 1: Dynamic Background Video / Blurred Camera Feed */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <video 
-          key={`bg-video-${bgVideoIndex}`}
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src={SPLASH_VIDEOS[bgVideoIndex]} type="video/mp4" />
-        </video>
+        {currentScreen === AppScreen.SPLASH ? (
+          <video
+            key={`bg-video-${bgVideoIndex}`}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src={SPLASH_VIDEOS[bgVideoIndex]} type="video/mp4" />
+          </video>
+        ) : (
+          globalStream && (
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+              <video
+                ref={bgVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="absolute object-cover filter blur-[10px] opacity-50"
+                style={{
+                  width: '100vh',
+                  height: '100vw',
+                  maxWidth: 'none',
+                  transform: 'rotate(90deg) scaleX(-1) scale(1.15)'
+                }}
+              />
+            </div>
+          )
+        )}
       </div>
 
       {/* Layer 2: Semi-transparent Animated Gradient Filter */}
-      <div 
-        className="absolute inset-0 z-10 pointer-events-none" 
+      <div
+        className="absolute inset-0 z-10 pointer-events-none transition-opacity duration-500"
         style={{
           background: 'linear-gradient(-45deg, rgba(11,21,48,0.85), rgba(46,11,18,0.85), rgba(17,20,41,0.85), rgba(36,8,16,0.85))',
           backgroundSize: '400% 400%',
-          animation: 'gradient-shift 22s ease-in-out infinite'
+          animation: 'gradient-shift 22s ease-in-out infinite',
+          opacity: currentScreen === AppScreen.SPLASH ? 1 : 0
         }}
       />
 

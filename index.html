@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>US-Embassy-Photobooth-2026</title>
+  <title>FutureMe</title>
   <meta name="theme-color" content="#050E1A" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -200,6 +200,21 @@
     .animate-bokeh-drift-1 { animation: bokeh-1 32s ease-in-out infinite; }
     .animate-bokeh-drift-2 { animation: bokeh-2 26s ease-in-out infinite; }
     .animate-bokeh-drift-3 { animation: bokeh-3 29s ease-in-out infinite; }
+
+    @keyframes spin-clockwise {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes spin-anticlockwise {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+    .animate-spin-clockwise {
+      animation: spin-clockwise 3.5s linear infinite !important;
+    }
+    .animate-spin-anticlockwise {
+      animation: spin-anticlockwise 3.5s linear infinite !important;
+    }
   </style>
 </head>
 
