@@ -100,7 +100,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ isAi = false }) => {
   return (
-    <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/85 backdrop-blur-md overflow-hidden cursor-none select-none">
+    <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/85 backdrop-blur-md overflow-hidden select-none">
       {/* 3D WebGL Fireworks Celebration Background - glowing behind the dark overlay */}
       <Fireworks3D intensity="subtle" />
 

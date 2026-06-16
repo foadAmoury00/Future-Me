@@ -29,7 +29,7 @@ export const Splash: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-[#FAF6EE] overflow-hidden cursor-none"
+      className="fixed inset-0 z-[9999] bg-[#FAF6EE] overflow-hidden"
       onClick={handleTransition}
     >
       {/* Background Video Layer */}

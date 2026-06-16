@@ -108,26 +108,21 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             }
           });
 
-          // Attempt to disable autofocus by setting focusMode to manual if supported
+          // Attempt to enable continuous autofocus if supported
           try {
             const track = mediaStream.getVideoTracks()[0];
             if (track) {
               const capabilities = track.getCapabilities() as any;
-              const settings = track.getSettings() as any;
-              if (capabilities.focusMode && capabilities.focusMode.includes('manual')) {
+              if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
                 const constraints: any = {
-                  advanced: [{ focusMode: 'manual' }]
+                  advanced: [{ focusMode: 'continuous' }]
                 };
-                // Lock current focus distance if available to prevent autofocus on brightness changes
-                if (settings.focusDistance !== undefined) {
-                  constraints.advanced[0].focusDistance = 500; // Fixed to ~10-20cm range
-                }
                 await track.applyConstraints(constraints as any);
-                console.log("[CameraCapture] Camera focusMode set to manual and focusDistance locked successfully.");
+                console.log("[CameraCapture] Camera focusMode set to continuous autofocus successfully.");
               }
             }
           } catch (focusErr) {
-            console.warn("[CameraCapture] Failed to apply manual focusMode constraint:", focusErr);
+            console.warn("[CameraCapture] Failed to apply continuous focusMode constraint:", focusErr);
           }
 
           setStream(mediaStream);

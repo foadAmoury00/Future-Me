@@ -7,7 +7,7 @@ export const EraSelectionScreen: React.FC<{ onSelectEra: (era: EraData) => void 
   const snapMemoryEra = ERAS.find(e => !e.isAiGenerated);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-transparent overflow-hidden flex flex-col items-center justify-end pb-20 cursor-none p-6">
+    <div className="fixed inset-0 z-[9999] bg-transparent overflow-hidden flex flex-col items-center justify-end pb-20 p-6">
       <div className="flex flex-col items-center gap-5 animate-scale-in w-full">
         {/* Snap The Memory Button (non-AI Choice) */}
         {snapMemoryEra && (

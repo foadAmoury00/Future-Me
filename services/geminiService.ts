@@ -75,8 +75,14 @@ export const generateHistoricalImage = async (
   console.log("[geminiService] generateHistoricalImage received devSelectedCareer:", devSelectedCareer);
   let selectedCareer = devSelectedCareer;
   if (selectedCareer === "random") {
-    selectedCareer = CAREERS[Math.floor(Math.random() * CAREERS.length)];
+    const lastCareer = localStorage.getItem('lastGeneratedCareer');
+    const availableCareers = lastCareer 
+      ? CAREERS.filter(c => c.toLowerCase() !== lastCareer.toLowerCase())
+      : CAREERS;
+    
+    selectedCareer = availableCareers[Math.floor(Math.random() * availableCareers.length)];
   }
+  localStorage.setItem('lastGeneratedCareer', selectedCareer);
   console.log("[geminiService] selectedCareer chosen is:", selectedCareer);
 
   const getCareerSpecifics = (career: string): string => {
