@@ -76,10 +76,10 @@ export const generateHistoricalImage = async (
   let selectedCareer = devSelectedCareer;
   if (selectedCareer === "random") {
     const lastCareer = localStorage.getItem('lastGeneratedCareer');
-    const availableCareers = lastCareer 
+    const availableCareers = lastCareer
       ? CAREERS.filter(c => c.toLowerCase() !== lastCareer.toLowerCase())
       : CAREERS;
-    
+
     selectedCareer = availableCareers[Math.floor(Math.random() * availableCareers.length)];
   }
   localStorage.setItem('lastGeneratedCareer', selectedCareer);
